@@ -1,0 +1,99 @@
+# PIX collection RETURN file, 750 positions per record.
+# Modelled on the public "PIX receivables" CNAB manual of a large Brazilian bank:
+# the bank sends this file back to the company, reporting QR-code issuance,
+# payment and cancellation events.
+#
+# Field types: alpha (left-aligned, space-padded) | digits (zero-padded string,
+# keeps leading zeros: IDs, accounts) | int | money (cents, zero-padded) |
+# date (YYYYMMDD, blank allowed).
+# auto: sequence | detail_count | generation_date -> filled by the writer.
+#
+# Note on the source manual: it lists the header field "PSP reserved" as
+# positions 194-213 with size X(60). 194-213 is only 20 positions, and the next
+# field starts at 254, so 194-253 (60 positions) is the only consistent reading.
+# `cnab check-layout` exists to catch exactly this kind of spec inconsistency.
+
+name: pix_return_750
+description: PIX collection return file (bank -> company), 750-position records
+record_length: 750
+
+records:
+  header:
+    match: { pos: 1, value: "0" }
+    fields:
+      - { name: record_type,        pos: [1, 1],     type: int,    value: 0 }
+      - { name: return_code,        pos: [2, 2],     type: int,    value: 2 }
+      - { name: file_literal,       pos: [3, 9],     type: alpha,  value: RETORNO }
+      - { name: service_code,       pos: [10, 11],   type: digits, value: "02" }
+      - { name: service_name,       pos: [12, 26],   type: alpha,  value: PIX }
+      - { name: ispb,               pos: [27, 34],   type: digits }
+      - { name: registration_type,  pos: [35, 36],   type: digits, value: "02" }
+      - { name: receiver_tax_id,    pos: [37, 50],   type: digits }
+      - { name: branch,             pos: [51, 54],   type: digits }
+      - { name: account,            pos: [55, 74],   type: digits }
+      - { name: account_type,       pos: [75, 78],   type: alpha,  value: CACC }
+      - { name: pix_key,            pos: [79, 155],  type: alpha }
+      - { name: generation_date,    pos: [156, 163], type: date,   auto: generation_date }
+      - { name: agreement_code,     pos: [164, 193], type: alpha }
+      - { name: psp_reserved,       pos: [194, 253], type: alpha }
+      - { name: filler,             pos: [254, 741], type: alpha }
+      - { name: layout_version,     pos: [742, 744], type: digits, value: "001" }
+      - { name: sequence,           pos: [745, 750], type: int,    auto: sequence }
+
+  detail:
+    match: { pos: 1, value: "1" }
+    fields:
+      - { name: record_type,              pos: [1, 1],     type: int,    value: 1 }
+      - { name: ispb,                     pos: [2, 9],     type: digits }
+      - { name: registration_type,        pos: [10, 11],   type: digits, value: "02" }
+      - { name: receiver_tax_id,          pos: [12, 25],   type: digits }
+      - { name: branch,                   pos: [26, 29],   type: digits }
+      - { name: account,                  pos: [30, 49],   type: digits }
+      - { name: account_type,             pos: [50, 53],   type: alpha,  value: CACC }
+      - { name: pix_key,                  pos: [54, 130],  type: alpha }
+      - { name: charge_type,              pos: [131, 131], type: digits }   # 1 static QR, 2 dynamic QR, 3 transfer
+      - { name: movement_code,            pos: [132, 133], type: digits }   # see movement_codes below
+      - { name: movement_date,            pos: [134, 141], type: date }
+      - { name: txid,                     pos: [142, 176], type: alpha }
+      - { name: expiration_seconds,       pos: [177, 191], type: int,    value: 86400 }
+      - { name: due_date,                 pos: [192, 199], type: date }
+      - { name: original_amount,          pos: [200, 216], type: money }
+      - { name: interest_amount,          pos: [217, 233], type: money }
+      - { name: fine_amount,              pos: [234, 250], type: money }
+      - { name: discount_amount,          pos: [251, 267], type: money }
+      - { name: final_amount,             pos: [268, 284], type: money }
+      - { name: amount_paid,              pos: [285, 301], type: money }
+      - { name: filler_1,                 pos: [302, 318], type: alpha }
+      - { name: debtor_registration_type, pos: [319, 320], type: alpha }
+      - { name: debtor_tax_id,            pos: [321, 334], type: alpha }
+      - { name: payer_message,            pos: [335, 474], type: alpha }
+      - { name: payer_registration_type,  pos: [475, 476], type: alpha }    # 01 CPF, 02 CNPJ
+      - { name: payer_tax_id,             pos: [477, 490], type: alpha }
+      - { name: payer_name,               pos: [491, 630], type: alpha }
+      - { name: settlement_code,          pos: [631, 632], type: alpha }
+      - { name: end_to_end_id,            pos: [633, 667], type: alpha }
+      - { name: error_codes,              pos: [668, 697], type: alpha }
+      - { name: filler_2,                 pos: [698, 744], type: alpha }
+      - { name: sequence,                 pos: [745, 750], type: int,    auto: sequence }
+
+  trailer:
+    match: { pos: 1, value: "9" }
+    fields:
+      - { name: record_type,   pos: [1, 1],     type: int,    value: 9 }
+      - { name: return_code,   pos: [2, 2],     type: int,    value: 2 }
+      - { name: service_code,  pos: [3, 4],     type: digits, value: "02" }
+      - { name: ispb,          pos: [5, 12],    type: digits }
+      - { name: filler,        pos: [13, 729],  type: alpha }
+      - { name: detail_count,  pos: [730, 744], type: int,    auto: detail_count }
+      - { name: sequence,      pos: [745, 750], type: int,    auto: sequence }
+
+movement_codes:
+  "02": issuance confirmed
+  "03": issuance rejected
+  "04": change confirmed
+  "05": change rejected
+  "06": payment received
+  "07": cancellation confirmed
+  "08": automatic cancellation
+  "09": cancellation due to portability / claim
+  "11": cancellation rejected

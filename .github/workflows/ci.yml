@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: astral-sh/setup-uv@v6
+      - run: uv pip install --system -e ".[dev]"
+      - run: ruff check . && ruff format --check .
+      - run: pytest -q
+      - name: CLI smoke test
+        run: |
+          cnab check-layout pix_return_750
+          cnab generate -o /tmp/a.txt -n 100
+          cnab validate /tmp/a.txt
+          cnab to-csv /tmp/a.txt -o /tmp/a.csv
+          cnab from-csv /tmp/a.csv -o /tmp/b.txt --date 2026-07-31
+          cmp /tmp/a.txt /tmp/b.txt
