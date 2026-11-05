@@ -90,8 +90,11 @@ from cnab_toolkit.files import read_records, validate_file
 
 layout = load_layout("pix_return_750")
 assert not validate_file("retorno.txt", layout)
-paid = [r for kind, r in read_records("retorno.txt", layout)
-        if kind == "detail" and r["movement_code"] == "06"]
+paid = [
+    r
+    for kind, r in read_records("retorno.txt", layout)
+    if kind == "detail" and r["movement_code"] == "06"
+]
 ```
 
 ## Tests
