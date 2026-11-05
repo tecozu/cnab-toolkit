@@ -51,23 +51,25 @@ def encode_field(f: FieldSpec, value: Any) -> str:
         if _blank(value):
             return " " * f.size
         if isinstance(value, datetime | date):
-            text = value.strftime("%Y%m%d")
-        else:
-            text = _NON_DIGITS.sub("", str(value))
+            return value.strftime(f.format)
+        text = str(value).strip()
+        for fmt in (f.format, "%Y-%m-%d", "%d/%m/%Y"):  # layout format, or ISO/BR from a CSV
             try:
-                datetime.strptime(text, "%Y%m%d")
-            except ValueError as exc:
-                raise FieldError(f, value, "not a YYYYMMDD date") from exc
-        return text
+                return datetime.strptime(text, fmt).strftime(f.format)
+            except ValueError:
+                continue
+        raise FieldError(f, value, f"not a date ({f.format})")
 
     if t == "money":
         try:
-            cents = (Decimal(str(value or 0)) * 100).quantize(Decimal(1), rounding=ROUND_HALF_UP)
+            scaled = (Decimal(str(value or 0)) * 10**f.decimals).quantize(
+                Decimal(1), rounding=ROUND_HALF_UP
+            )
         except InvalidOperation as exc:
             raise FieldError(f, value, "not a number") from exc
-        if cents < 0:
+        if scaled < 0:
             raise FieldError(f, value, "negative amount")
-        text = str(int(cents))
+        text = str(int(scaled))
     elif t == "int":
         try:
             n = int(value or 0)
@@ -89,13 +91,20 @@ def decode_field(f: FieldSpec, raw: str) -> Any:
     if t == "alpha":
         return raw.rstrip()
     if t == "date":
-        return None if raw.strip() == "" else datetime.strptime(raw, "%Y%m%d").date()
+        if raw.strip("0 ") == "":  # blank or all zeros = "no date" in most CNAB layouts
+            return None
+        try:
+            return datetime.strptime(raw, f.format).date()
+        except ValueError as exc:
+            raise FieldError(f, raw, f"not a date ({f.format})") from exc
     if not raw.isdigit():
+        if raw.strip() == "" and t != "digits":
+            return None  # optional numeric field left blank
         raise FieldError(f, raw, "non-digit characters in numeric field")
     if t == "int":
         return int(raw)
     if t == "money":
-        return Decimal(int(raw)) / 100
+        return Decimal(int(raw)) / 10**f.decimals
     return raw  # digits: keep leading zeros
 
 

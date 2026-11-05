@@ -14,21 +14,44 @@ off by one position quietly corrupts every field after it.
 
 This toolkit describes a layout **once, as data (YAML)**, and gets from it:
 
+- **Reading & converting**: CNAB → typed records → **CSV or Excel** (amounts as `Decimal`, dates as `date`).
+- **Detection**: `cnab detect` tells you which layout a file you received uses.
+- **Editing**: change fields, keep or drop records, and renumber sequences and trailer
+  counts, addressing fields **by name** (see below).
 - **Generation**: seeded synthetic files for integration tests, or files built from a CSV.
-- **Parsing**: CNAB → typed records → CSV (amounts as `Decimal`, dates as `date`).
 - **Validation**: record length, header/trailer order, sequence numbers, trailer
   totals and field types, reported with line numbers.
-- **Layout linting**: gaps, overlaps and wrong record length in the spec itself.
+- **Layout linting**: gaps, overlaps, wrong record length and date formats that don't fit.
 
 ```text
-$ cnab generate -o pix_return.txt -n 50
-pix_return.txt: 52 records x 750 positions
+$ cnab detect remessa.txt
+cnab444_fidc           clean match
 
-$ cnab validate pix_return.txt
-pix_return.txt: OK
+$ cnab to-excel remessa.txt -l cnab444_fidc -o remessa.xlsx
+remessa.xlsx: 1830 details
 
-$ cnab to-csv pix_return.txt -o events.csv      # and back: cnab from-csv events.csv -o same.txt
+$ cnab validate remessa.txt -l cnab444_fidc
+remessa.txt: OK
 ```
+
+## Editing files without counting positions
+
+Operations teams routinely get requests like "resend the file without the cancelled
+contracts" or "postpone these 40 due dates". Slicing strings at hand-counted positions
+breaks easily. `cnab edit` works through the layout instead:
+
+```bash
+# drop the records whose participant_control_id is listed in cancelled.csv
+cnab edit remessa.txt -l cnab444_fidc --key participant_control_id --drop cancelled.csv -o remessa_v2.txt
+
+# change fields from a spreadsheet (key column + one column per field; dates as dd/mm/yyyy or ISO)
+cnab edit remessa.txt -l cnab444_fidc --key participant_control_id --set new_due_dates.csv -o remessa_v2.txt
+```
+
+Edited fields are re-encoded with the same strict rules used for writing. Every other
+byte is preserved, and sequence numbers and trailer counts are recomputed, so the output
+always passes `cnab validate`. Keys that were requested but not found in the file are
+reported, not silently ignored.
 
 ## Why spec-driven?
 
@@ -67,10 +90,19 @@ manual's version and asserts that the linter reports `gap at positions 214-253`.
 
 | Layout | Records | Description |
 |---|---|---|
+| `cnab444_fidc` | header · **detail** · trailer | Receivables **assignment** remittance used by FIDC administrators and originators: present value, assignment term, debtor, NF-e key |
+| `cnab500_installments` | header · **detail** · trailer | Installment-level remittance for consumer and payroll-deductible credit: contract/installment, CET, guarantor, financed amount, employer |
 | `pix_return_750` | header · detail · trailer | PIX collection **return** file (bank → company): QR-code issuance, payment and cancellation events, modelled on a large Brazilian bank's public manual |
 
-Add a layout by dropping a YAML file in `src/cnab_toolkit/layouts/`, or pass any YAML
-path with `--layout`. `cnab check-layout my_layout.yaml` lints it.
+For 444 and 500, the detail record is fully itemized. Header and trailer are kept as one
+opaque block plus the sequence number, because their content varies between
+administrators.
+
+Add a layout (CNAB 240, 400, 700…) by dropping a YAML file in `src/cnab_toolkit/layouts/`,
+or pass any YAML path with `--layout`. `cnab check-layout my_layout.yaml` lints it, and
+`cnab generate -l my_layout.yaml` produces synthetic files for it right away. Dates
+support any `strftime` format (`%d%m%y` for DDMMAA), and money fields support any
+number of implied decimals.
 
 The synthetic generator produces a realistic mix of payments, pending charges and
 cancellations. Payers have **valid** CPF/CNPJ check digits, and end-to-end IDs follow
@@ -110,7 +142,7 @@ numeric field, missing record), and a lossless **CNAB → CSV → CNAB** CLI rou
 
 ## Roadmap
 
-- CNAB 240 (FEBRABAN) and CNAB 400 collection layouts
+- CNAB 240 (FEBRABAN), CNAB 400 and CNAB 700 layouts, plus itemized 444/500 headers and trailers
 - REMESSA (company → bank) PIX layout
 - Optional validation hooks (e.g. CPF/CNPJ check digits on ID fields)
 

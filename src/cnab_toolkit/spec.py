@@ -8,6 +8,7 @@ fails immediately instead of shifting every later field by a few characters.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date
 from importlib import resources
 from pathlib import Path
 from typing import Any
@@ -30,6 +31,8 @@ class FieldSpec:
     type: str
     value: Any = None  # constant/default
     auto: str | None = None
+    format: str = "%Y%m%d"  # date fields: strftime pattern (e.g. %d%m%y for DDMMAA)
+    decimals: int = 2  # money fields: implied decimal places
 
     @property
     def size(self) -> int:
@@ -91,6 +94,8 @@ def check_record(rec: RecordSpec, record_length: int) -> list[str]:
             problems.append(f"{rec.name}.{f.name}: unknown type '{f.type}'")
         if f.auto and f.auto not in AUTO_KINDS:
             problems.append(f"{rec.name}.{f.name}: unknown auto '{f.auto}'")
+        if f.type == "date" and len(date(2000, 12, 31).strftime(f.format)) != f.size:
+            problems.append(f"{rec.name}.{f.name}: date format {f.format!r} does not fit {f.size}")
         expected = max(expected, f.end + 1)
     if expected - 1 != record_length:
         problems.append(
@@ -112,6 +117,8 @@ def parse_layout(raw: dict[str, Any]) -> Layout:
                 type=f["type"],
                 value=f.get("value"),
                 auto=f.get("auto"),
+                format=f.get("format", "%Y%m%d"),
+                decimals=int(f.get("decimals", 2)),
             )
             for f in rraw["fields"]
         )

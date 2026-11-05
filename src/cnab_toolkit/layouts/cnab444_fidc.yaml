@@ -1,0 +1,82 @@
+# CNAB 444 - receivables assignment file ("remessa de cessao") used by FIDC
+# administrators and originators in Brazil. It extends the classic 400-position
+# collection layout with assignment data (present value, assignment term number,
+# debtor details and the electronic-invoice key).
+#
+# The DETAIL record is itemized. Header and trailer are kept as one opaque block plus
+# the sequence number: their content varies between administrators, while the
+# sequence must always be renumbered when a file is edited.
+
+name: cnab444_fidc
+description: Receivables assignment remittance (FIDC), 444-position records
+record_length: 444
+
+records:
+  header:
+    match: { pos: 1, value: "0" }
+    fields:
+      - { name: record_type,    pos: [1, 1],     type: int, value: 0 }
+      - { name: header_content, pos: [2, 438],   type: alpha }
+      - { name: sequence,       pos: [439, 444], type: int, auto: sequence }
+
+  detail:
+    match: { pos: 1, value: "1" }
+    fields:
+      - { name: record_type,              pos: [1, 1],     type: int, value: 1 }
+      - { name: grace_date,               pos: [2, 7],     type: date, format: "%d%m%y" }
+      - { name: interest_type,            pos: [8, 8],     type: alpha }
+      - { name: filler_1,                 pos: [9, 10],    type: alpha }
+      - { name: interest_rate,            pos: [11, 20],   type: digits }
+      - { name: recourse,                 pos: [21, 22],   type: alpha }   # coobrigacao
+      - { name: special_feature,          pos: [23, 24],   type: alpha }
+      - { name: operation_modality,       pos: [25, 28],   type: alpha }
+      - { name: operation_nature,         pos: [29, 30],   type: alpha }
+      - { name: funding_source,           pos: [31, 34],   type: alpha }
+      - { name: risk_class,               pos: [35, 36],   type: alpha }
+      - { name: zeros_1,                  pos: [37, 37],   type: digits }
+      - { name: participant_control_id,   pos: [38, 62],   type: alpha }   # "seu numero"
+      - { name: bank_code,                pos: [63, 65],   type: digits }
+      - { name: zeros_2,                  pos: [66, 70],   type: digits }
+      - { name: bank_title_id,            pos: [71, 81],   type: digits }  # "nosso numero"
+      - { name: bank_title_check_digit,   pos: [82, 82],   type: alpha }
+      - { name: amount_paid,              pos: [83, 92],   type: money }
+      - { name: slip_issue_condition,     pos: [93, 93],   type: alpha }
+      - { name: auto_debit_slip,          pos: [94, 94],   type: alpha }
+      - { name: settlement_date,          pos: [95, 100],  type: date, format: "%d%m%y" }
+      - { name: bank_operation_id,        pos: [101, 104], type: alpha }
+      - { name: credit_split_flag,        pos: [105, 105], type: alpha }
+      - { name: auto_debit_notice,        pos: [106, 106], type: alpha }
+      - { name: filler_2,                 pos: [107, 108], type: alpha }
+      - { name: occurrence_code,          pos: [109, 110], type: digits }
+      - { name: document_number,          pos: [111, 120], type: alpha }
+      - { name: due_date,                 pos: [121, 126], type: date, format: "%d%m%y" }
+      - { name: face_value,               pos: [127, 139], type: money }
+      - { name: collecting_bank,          pos: [140, 142], type: digits }
+      - { name: depositary_branch,        pos: [143, 147], type: digits }
+      - { name: title_kind,               pos: [148, 149], type: digits }
+      - { name: identification,           pos: [150, 150], type: alpha }
+      - { name: issue_date,               pos: [151, 156], type: date, format: "%d%m%y" }
+      - { name: instruction_1,            pos: [157, 158], type: alpha }
+      - { name: instruction_2,            pos: [159, 159], type: alpha }
+      - { name: seller_person_type,       pos: [160, 161], type: alpha }
+      - { name: late_interest,            pos: [162, 173], type: money }
+      - { name: assignment_term_number,   pos: [174, 192], type: alpha }
+      - { name: present_value,            pos: [193, 205], type: money }   # acquisition value
+      - { name: rebate_amount,            pos: [206, 218], type: money }
+      - { name: debtor_registration_type, pos: [219, 220], type: digits }  # 01 CPF, 02 CNPJ
+      - { name: debtor_tax_id,            pos: [221, 234], type: digits }
+      - { name: debtor_name,              pos: [235, 274], type: alpha }
+      - { name: debtor_address,           pos: [275, 314], type: alpha }
+      - { name: invoice_number,           pos: [315, 323], type: alpha }
+      - { name: invoice_series,           pos: [324, 326], type: alpha }
+      - { name: debtor_zip_code,          pos: [327, 334], type: digits }
+      - { name: seller,                   pos: [335, 394], type: alpha }   # cedente
+      - { name: invoice_key,              pos: [395, 438], type: alpha }   # NF-e access key
+      - { name: sequence,                 pos: [439, 444], type: int, auto: sequence }
+
+  trailer:
+    match: { pos: 1, value: "9" }
+    fields:
+      - { name: record_type,     pos: [1, 1],     type: int, value: 9 }
+      - { name: trailer_content, pos: [2, 438],   type: alpha }
+      - { name: sequence,        pos: [439, 444], type: int, auto: sequence }

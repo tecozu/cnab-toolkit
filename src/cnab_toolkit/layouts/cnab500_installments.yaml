@@ -1,0 +1,86 @@
+# CNAB 500 - installment-level receivables remittance (consumer and payroll-deductible
+# credit), used by some FIDC administrators. Compared with CNAB 444 it carries
+# contract/installment numbering, CET, guarantor data, financed amount and the
+# payroll-deduction employer (consignante).
+#
+# DETAIL is itemized; header and trailer are opaque blocks plus the sequence number.
+
+name: cnab500_installments
+description: Installment receivables remittance (consumer/payroll credit), 500-position records
+record_length: 500
+
+records:
+  header:
+    match: { pos: 1, value: "0" }
+    fields:
+      - { name: record_type,    pos: [1, 1],     type: int, value: 0 }
+      - { name: header_content, pos: [2, 494],   type: alpha }
+      - { name: sequence,       pos: [495, 500], type: int, auto: sequence }
+
+  detail:
+    match: { pos: 1, value: "1" }
+    fields:
+      - { name: record_type,               pos: [1, 1],     type: int, value: 1 }
+      - { name: seller_registration_type,  pos: [2, 3],     type: digits }
+      - { name: seller_tax_id,             pos: [4, 17],    type: digits }
+      - { name: contract_number,           pos: [18, 29],   type: alpha }
+      - { name: installment_number,        pos: [30, 32],   type: int }
+      - { name: total_installments,        pos: [33, 35],   type: int }
+      - { name: filler_1,                  pos: [36, 42],   type: alpha }
+      - { name: effective_cost_rate,       pos: [43, 47],   type: digits }  # CET
+      - { name: participant_control_id,    pos: [48, 72],   type: alpha }   # "seu numero"
+      - { name: zeros_1,                   pos: [73, 83],   type: digits }
+      - { name: bank_title_id,             pos: [84, 94],   type: digits }
+      - { name: bank_title_check_digit,    pos: [95, 95],   type: alpha }
+      - { name: amount_paid,               pos: [96, 108],  type: money }
+      - { name: settlement_date,           pos: [109, 116], type: date, format: "%d%m%Y" }
+      - { name: death_date,                pos: [117, 124], type: date, format: "%d%m%Y" }
+      - { name: filler_2,                  pos: [125, 126], type: alpha }
+      - { name: store_code,                pos: [127, 129], type: alpha }
+      - { name: product_code,              pos: [130, 132], type: alpha }
+      - { name: financing_type_code,       pos: [133, 135], type: alpha }
+      - { name: debtor_sector_code,        pos: [136, 138], type: alpha }
+      - { name: occurrence_code,           pos: [139, 140], type: digits }
+      - { name: due_date,                  pos: [141, 148], type: date, format: "%d%m%Y" }
+      - { name: face_value,                pos: [149, 161], type: money }
+      - { name: collecting_bank,           pos: [162, 164], type: digits }
+      - { name: depositary_branch,         pos: [165, 169], type: digits }
+      - { name: renegotiation_sequence,    pos: [170, 177], type: digits }
+      - { name: filler_3,                  pos: [178, 179], type: alpha }
+      - { name: title_kind,                pos: [180, 181], type: digits }
+      - { name: identification,            pos: [182, 182], type: alpha }
+      - { name: issue_date,                pos: [183, 190], type: date, format: "%d%m%Y" }
+      - { name: instruction_1,             pos: [191, 192], type: alpha }
+      - { name: instruction_2,             pos: [193, 194], type: alpha }
+      - { name: fine_amount,               pos: [195, 207], type: money }
+      - { name: discount_limit_date,       pos: [208, 215], type: date, format: "%d%m%Y" }
+      - { name: late_interest,             pos: [216, 228], type: money }
+      - { name: present_value,             pos: [229, 241], type: money }
+      - { name: rebate_amount,             pos: [242, 254], type: money }
+      - { name: index_code,                pos: [255, 257], type: alpha }
+      - { name: index_adjustment,          pos: [258, 264], type: digits }
+      - { name: debtor_registration_type,  pos: [265, 266], type: digits }
+      - { name: debtor_tax_id,             pos: [267, 280], type: digits }
+      - { name: debtor_name,               pos: [281, 320], type: alpha }
+      - { name: debtor_address,            pos: [321, 360], type: alpha }
+      - { name: message_1,                 pos: [361, 372], type: alpha }
+      - { name: debtor_zip_code,           pos: [373, 380], type: digits }
+      - { name: debtor_birth_date,         pos: [381, 388], type: date, format: "%d%m%Y" }
+      - { name: debtor_age,                pos: [389, 391], type: int }
+      - { name: guarantor_registration_type, pos: [392, 393], type: digits }
+      - { name: guarantor_tax_id,          pos: [394, 407], type: digits }
+      - { name: guarantor_name,            pos: [408, 447], type: alpha }
+      - { name: financed_amount,           pos: [448, 460], type: money }
+      - { name: debtor_employee_id,        pos: [461, 472], type: alpha }   # matricula
+      - { name: employer_tax_id,           pos: [473, 486], type: digits }  # ente consignante
+      - { name: contract_type,             pos: [487, 489], type: alpha }
+      - { name: asset_type,                pos: [490, 490], type: alpha }
+      - { name: filler_4,                  pos: [491, 494], type: alpha }
+      - { name: sequence,                  pos: [495, 500], type: int, auto: sequence }
+
+  trailer:
+    match: { pos: 1, value: "9" }
+    fields:
+      - { name: record_type,     pos: [1, 1],     type: int, value: 9 }
+      - { name: trailer_content, pos: [2, 494],   type: alpha }
+      - { name: sequence,        pos: [495, 500], type: int, auto: sequence }
